@@ -1,0 +1,241 @@
+.TH NRM 1:LOCAL "(version 0.1)" 
+.ad b
+.SH NAME
+fftp  \- perform czt fast fourier transform on input data with welch's method
+.SH SYNOPSIS
+.B fftp
+[\-0] [-1] [\-a] [\-b<rbw>]
+[\-d<ref>] [\-f<fmin>,<fmax>] [\-f<fcenter>@<span>] [\-h] 
+[\-k<sidelobe_level>] [\-m<CZT_blocksize>]
+[\-n<input_blocksize>]
+[\-p<fft_pad_factor>]
+[\-s]
+[\-t]
+[\-v]
+[\-w<window_type>]
+[filenames]
+.br 
+.PP
+.SH DESCRIPTION
+.BR Fftp\^
+performs Welch's FFT averaging algorithm [1] on standard input, writing
+spectrum plot to standard output.  If -m<output_block_length> or
+-f<frequency range> options are specified, will optionally perform Chirp
+Z Transform (CZT) [2] to allow efficient zooming into a desired frequency range. 
+.br
+.SS OPTIONS
+.TP
+.I "\-0"
+Supresses DC component on each block.  This is implemented by measuring the DC
+value of the signal after windowing and then subtracting a windowed DC value from
+the data.  This supresses the sidelobes of the DC component which might otherwise
+obscure low frequency spectral components.
+.TP
+.I "\-1"
+Display the spectrum in one-sided form.  This is usually the desired format for
+real input data.  The complex double sided spectrum is always calculated, but the 
+displayed one-sided power is the sum of the positive and negative powers.
+.TP
+.I "\-a"
+Animate mode.  Outputs each average as it is computed rather than waiting for
+the entire ensemble to be processed.  If the output is piped to pdplot(1), the user
+can watch the noise averaging as it progresses.
+.TP
+.I "\-b <rbw>"
+Set the desired resolution bandwidth.  This option is only partially implemented
+.TP
+.I "\-d<ref>"
+Adjust the 0dB reference level.  By default, the signal is plotted as RMS amplitude
+using 1V as the reference level.  When the 
+.I "\-d<ref>"
+option is specified, the signal is plotted on a logarithmic scale.  The <ref>
+argument can be either a number or one of "bm", "bv", or "bu".
+.I "\-dbm" 
+sets the 0dB reference to a signal that would dissipate 1mW 
+into 50 ohms.
+.I "\-dbv"
+sets the 0dB reference to 1Volt RMS.
+.I "\-dbc"
+sets the 0dB reference to 1Volt RMS.
+.I "\-dbu"
+sets the 0dB reference to the voltage that would dissipate 1mW
+into 600 ohms.
+.I "\-d1e-3"
+sets the 0dB reference to 1mV.
+.TP
+.I "\-f<fmin>,<fmax>"
+Uses the Chirp-Z Transform (CZT) to compute the spectrum between the two 
+specified frequencies.  
+The arguments should be single numbers separated by comma with no embedded spaces.
+.TP
+.I "\-f<fcenter>,<span>"
+Uses the Chirp-Z Transform (CZT) to compute the spectrum between the two 
+frequencies: <fcenter>-<span> and <fcenter>+<fspan>.
+The arguments should be single numbers separated by comma with no embedded spaces.
+.TP
+.I "\-h"
+Enable peak hold mode.  In normal operation, fftp simply averages the
+power spectra for each block to provide a final, smoothed result.  In
+peak hold mode, the maximum of each block's spectra is held for each
+bin.  This allows the detection of bursty signals within a long dataset
+that would otherwise be averaged away. 
+.TP
+.I "\-k<sidelobe_level_db>"
+This option specifies a kaiser window with sidelobes of a given level. The
+argument is a positive number between 13.26 and 120dB.  The default sidelobe
+level is 120dB.
+.TP
+.I "\-m<CZT_blocksize>"
+Enable CZT processing with the specified number of output points.
+.TP
+.I "\-n<input_blocksize>"
+Use blocks of <input_blocksize> for the Welch averaging algorithm.  The
+default blocksize is 1024. 
+.TP
+.I "\-p<fft_pad_factor>"
+Specify a zero padding factor for input data.  It can be difficult to
+measure the amplitude of frequencies that do not fall exactly on the FFT
+bins.  By zero-padding the data prior to processing, the spectral peak is
+can be easily read from the output data.  The padding factor may be fractional.
+A pad of "1.0" doubles the number of computed frequency points by appending 
+a sequence of zero values equal to the original block length to the data prior
+to performing the FFT.
+.TP
+.I "\-s"
+Display spectral density normalized to the power in a 1Hz bandwidth.  This is
+useful when the noise floor is the term of interest.  In spectral density mode, all
+the spectral peak powers are reduced by the resolution bandwidth.  In normal mode, the
+noise floor is increased by the resolution bandwidth and the spectral peaks are
+shown at their correct power level.
+.TP
+.I "\-t"
+Enable pdplot(1) headers in the output.  These include x/y axis labels and resolution bandwidth
+values.
+.TP
+.I "\-v"
+Plot verbose debugging information to stderr.
+.TP
+.I "\-w<window_type>"
+Specify the window type used.  Any unique prefix of the following
+strings are accepted: (b)lackman, (han)ning, (ham)ming, (n)uttal,
+(k)aiser or (r)rectangular.  Blackman is the default.   If (k)aiser
+is specified, the sidelobe level will default to 120dB unless changed
+with the 
+.I "\-k<sidelobe_level_db>"
+option.
+.SH EXAMPLES
+.PP
+A sinusoid signal at 125Hz with a dc component of 1V can be
+generated and analyzed as follows.
+
+.DS
+    awk '
+    BEGIN {
+      OFMT="%.12g"
+      for (t=0; t<5; t+=1/1024)
+        print t, 1+sqrt(2)*sin(6.2832*125*t)
+    }' | fftp -1 -wv -n350 -p8 | pd
+.DE
+
+.PP
+Complex input data such as the following, resulting from quadrature
+mixing of a single-sideband signal, yields an asymmetrical two-sided
+spectrum.
+
+.DS
+    awk '
+    BEGIN {
+      OFMT="%.12g"
+      for (t=0; t<5; t+=1/1024)
+        print t, cos(6.2832*125*t), sin(6.2832*125*t)
+    }' | fftp -wv -n350 -p8 | pd
+.DE
+
+.PP
+With the
+.B -f
+option, one can zoom in on the desired signal.  Note that the resolution
+of the peak is still limited by the window length selected via the
+.B -n
+option.  The
+.B -dbv
+option is also introduced in this example to enable decibel plots.
+
+.DS
+    awk '
+    BEGIN {
+      OFMT="%.12g"
+      for (t=0; t<5; t+=1/1024)
+        print t, cos(6.2832*125*t), sin(6.2832*125*t)
+    }' | fftp -wv -n350 -f50@125 -dbv | pd
+.DE
+
+.PP
+The following example demonstrates the measurement of wideband noise
+using the spectral density mode enabled by the option
+.B -s.
+The generated binary noise sequence has a root-mean-squared value
+of 1 "Volt".  Assuming that the noise is distributed uniformly over
+the bandwidth from zero to the Nyquist frequency of 512Hz, the noise
+magnitude should be 1/sqrt(512) V/sqrt(Hz) or about 44 mV/sqrt(Hz).
+
+.DS
+    awk '
+    BEGIN {
+      OFMT="%.12g"
+      for (t=0; t<250; t+=1/1024)
+        print t, (rand()<0.5) ? -1 : 1
+    }' | fftp -1s -n500 -a100 -t | pd
+.DE
+
+.PP
+Use of a Kaiser data window allows one to resolve low-level spectral
+features that can be obscured by the sidelobes of other windows.
+
+.DS
+    awk '
+    BEGIN {
+      OFMT="%.12g"
+      for (t=0; t<25; t+=1/1024)
+        print t, sqrt(2)*sin(800*t)+(sqrt(2)/1e5)*sin(880*t)
+    }' | fftp -1 -k120 -n1024 -p8 -dbv | pd
+.DE
+
+.SH REFERENCES 
+.TP
+[1]
+P. D. Welch, "The Use of Fast Fourier 
+Transform for the Estimation of Power Spectra:...",
+.I IEEE Trans. on Audio and Electroacoustics,
+vol. AU-15, pp. 70-73, June 1967.  Reprinted in
+.I Digital Signal Processing,
+IEEE Press, pp. 335-338, New York, 1972.
+.TP
+[2]
+L. R. Rabiner et al., "The Chirp z-Transform Algorithm",
+.I IEEE Trans. on Audio and Electroacoustics,
+vol. AU-17, pp. 86-92, June 1969.  Reprinted in
+.I Digital Signal Processing,
+IEEE Press, pp. 322-328, New York, 1972.
+.TP
+[3]
+Simon Sirin, 
+.I "A DSP algorithm for frequency analysis",
+January 15, 2004, Embedded Magazine.  (the czt kernel given in this article 
+was the basis of the fftp implementation).
+.TP
+[4]
+Joshua Minor, FFT code GPL 2003,2006, http://lux.vu/applets/frequency.pde
+(this is the fft code used in this implementation).
+.TP
+[5] 
+D. Richard Brown III, 
+.I "Digital Signal Processing - Kaiser Window Design for Fourier Analysis", 
+http://spinlab.wpi.edu/courses/ece503_2014/12-5kaiser_window_design.pdf
+(this is the code used to generate the kaiser window with a given sidelobe depth).
+.SH AUTHOR
+Rick Walker (walker@omnisterra.com).  Fftp is a clean-room
+re-implementation of the welch(1) program originally written by Scott
+Willingham at Hewlett-Packard Laboratories with the intent to duplicate
+the welch(1) command line options. 
+
