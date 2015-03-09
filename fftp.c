@@ -371,7 +371,10 @@ int main(int argc, char **argv)
 		default:
 		    break;
 	    }
-	    fprintf(stderr, "# opts.fstart=%g, opts.fstop=%g\n", opts.fstart, opts.fstop);
+            if(opts.verbose) {
+	       fprintf(stderr, "# opts.fstart=%g, opts.fstop=%g\n", 
+	           opts.fstart, opts.fstop);
+	    }
 	    // fcorrection = opts.samplerate/m;
 	    fcorrection = opts.p*(opts.fstop-opts.fstart)/m;
 
