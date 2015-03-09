@@ -96,7 +96,7 @@ int wintype(char *wname) {
     return(type);
 }
 
-int window(COMPLEX *in, int N, WINTYPE type, int nulldc) {
+int window(COMPLEX *in, int N, WINTYPE type, int nulldc, int singlesided) {
     int n;
     double a, b, c, d;
     double gain;
@@ -108,6 +108,8 @@ int window(COMPLEX *in, int N, WINTYPE type, int nulldc) {
 
     int i;
     int found=0;
+     
+    // fprintf(stderr, "#opts.singlesided=%d null=%d\n", singlesided, nulldc);
 
     // get window parameters from table
     for (i=0; (windows[i].wintype != NONE) && !found ; i++) {
@@ -135,23 +137,27 @@ int window(COMPLEX *in, int N, WINTYPE type, int nulldc) {
 	    scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta));
 	}
 
-	in[n].re = in[n].re*scale;
+	in[n].re = in[n].re*scale;	// window the data
 	in[n].im = in[n].im*scale;
+
         area+=scale;		// compute window weighting factor
-        if (nulldc) {
-	   reavg += in[n].re;	// compute average real dc value
-	   imavg += in[n].im;	// compute average imag dc value
-	}
+        reavg += in[n].re;	// compute integrated real dc value
+        imavg += in[n].im;	// compute integrated imag dc value
     }
 
     // FIXME, should use lazy evaluation for calculation window gain. 
     // Needs only to be done once instead of in inner loop. 
 
     gain =  area/((double)N);
+    
+    // fprintf(stderr,"#reav=%g,imav=%g,area=%g, g=%g\n", reavg, imavg, area, gain);
 
     for (n = 0; n < N; n++) {
-	in[n].re = in[n].re*(1.0/gain);	// normalize gain
-	in[n].im = in[n].im*(1.0/gain);	// normalize gain
+	in[n].re *= (1.0/gain);	// normalize gain
+	in[n].im *= (1.0/gain);	// normalize gain
+
+        // FIXME: need to know whether single-sided or double-sided
+	// only correct DC term for single-sided spectrum
 
 	if (nulldc) {
 	    // subtract a windowed DC term to adjust DC level
@@ -161,13 +167,30 @@ int window(COMPLEX *in, int N, WINTYPE type, int nulldc) {
 		theta = (double)n*2.0*M_PI/(N-1.0);
 		scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta));
 	    }
-	    in[n].re -= ((1.0/gain)*scale*reavg/((double)N));
-	    in[n].im -= ((1.0/gain)*scale*imavg/((double)N));
 
-	    // makes dc term factor sqrt(2) lower
-	    // in[n].re -= (1.0+1.0/sqrt(2.0))*((1.0/gain)*scale*reavg/((double)N));
-	    // in[n].im -= (1.0+1.0/sqrt(2.0))*((1.0/gain)*scale*imavg/((double)N));
-	} 
+	    // null out DC term completely
+                 
+	    in[n].re -= (1.0/(gain*gain))*scale*reavg/((double)N);
+	    in[n].im -= (1.0/(gain*gain))*scale*imavg/((double)N);
+
+            // fprintf(stderr,"%d %g %d\n", n, in[n].re, N);
+            // fprintf(stderr,"#scale %g, reavg %g, gain %g\n", scale, reavg, gain);
+            // fprintf(stderr,"%d %g\n", n, scale);
+	} else {
+	    if (singlesided) {
+		// subtract a windowed DC term to adjust DC level
+		if (type == KAISER) {
+		    scale = kaiser_window(n,N);
+		} else {
+		    theta = (double)n*2.0*M_PI/(N-1.0);
+		    scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta));
+		}
+                 
+		// makes dc term factor sqrt(2) lower
+		in[n].re -= (1.0+1.0/sqrt(2.0))*((1.0/(gain*gain))*scale*reavg/((double)N));
+		in[n].im -= (1.0+1.0/sqrt(2.0))*((1.0/(gain*gain))*scale*imavg/((double)N));
+	    }
+	}
     }
 
     return(0);

@@ -135,6 +135,7 @@ void massage_opts() {
 	    fprintf(stderr, "# opts.out output block size = %d\n", opts.out);
 	    fprintf(stderr, "# opts.m output data size = %d\n", opts.m);
 	    fprintf(stderr, "# output points to user = %d\n", opts.m);
+	    fprintf(stderr, "# opts.singlesided = %d\n", opts.singlesided);
 	    fprintf(stderr, "# opts.fflag=%d, opts.fstart=%g, opts.fstop=%g\n",
 	    	opts.fflag, opts.fstart, opts.fstop);
 	} else {
@@ -161,12 +162,12 @@ void putpoint(int i, double fcorrection, double foffset, double p) {
    }
    if (opts.dbmode) {
       printf("%12g %12g\n", 
-      	foffset+((double)i)*fcorrection*opts.n/opts.m, 
-	20*log10(p*opts.p/corr)-20*log10(opts.dbref));
+      	foffset+((double)i)*fcorrection*opts.n/((double)opts.m-1.0), 
+	20*log10(p*(opts.m/opts.n)/corr)-20*log10(opts.dbref));
    } else {
       printf("%12g %12g\n", 
-      	foffset+((double)i)*fcorrection*opts.n/opts.m, 
-	p*opts.p/corr);
+      	foffset+((double)i)*fcorrection*opts.n/((double)opts.m-1.0), 
+	p*(opts.m/opts.n)/corr);
    }
 }
 
@@ -336,7 +337,7 @@ int main(int argc, char **argv)
         opts.samplerate = 1.0/davg;
 	// fprintf(stderr,"samplerate is %g, davg=%g\n", opts.samplerate, davg);
 
-	window(in,opts.n,opts.wtype,opts.nodc);
+	window(in,opts.n,opts.wtype,opts.nodc,opts.singlesided);
 
 	// dumparray(in, opts.n, "this is the windowed array");
 
@@ -354,19 +355,24 @@ int main(int argc, char **argv)
 	    m = (double) opts.m;
             switch (opts.fflag) {
 		case 0:
-		    opts.fstart = -opts.samplerate/((m-1.0)/m);
-		    opts.fstop = opts.samplerate/((m-1.0)/m);
+		    // ((msamples-2)/msamples)*(-Fs/2) to Fs/2
+		    // ((msamples-1)/msamples)*(-Fs/2)
+
+		    opts.fstart = ((m-2.0)/(m))*(-opts.samplerate/2.0);
+		    opts.fstop = opts.samplerate/(2.0);
 		    break;
 	    	case 1:	
-		    opts.fstop = opts.samplerate/((m-1.0)/m);
+		    opts.fstop = opts.samplerate*((m-1.0)/(2.0*m));
 		    break;
 		case 2:
-		    opts.fstart = -opts.samplerate/((m-1.0)/m);
+		    opts.fstart = -opts.samplerate*((m-1.0)/(2.0*m));
 		    break;
 		case 3:
+		    // FIXME: perhaps check for out of bounds frequencies here
 		default:
 		    break;
 	    }
+	    fprintf(stderr, "# opts.fstart=%g, opts.fstop=%g\n", opts.fstart, opts.fstop);
 	    // fcorrection = opts.samplerate/m;
 	    fcorrection = opts.p*(opts.fstop-opts.fstart)/m;
 
@@ -431,6 +437,7 @@ int main(int argc, char **argv)
 	    // FOO
 	    corr = 1.0; //sqrt(2.0);
 	    corr = 1.0/sqrt(2.0);
+
 	    if (i == 0) {		
 		posmag = sqrt(spec[i].re);
 		negmag = posmag;
@@ -478,6 +485,9 @@ int main(int argc, char **argv)
 
 #define TIMETOL 1e-1
 
+// FIXME: readin should get passed a pointer to a flag that
+// says whether it has ever seen a complex number on the input
+
 int readin(int n, COMPLEX * in, double *davg, int numwins) {
     int i;
     double t, told, delta,  re, im;
@@ -487,6 +497,7 @@ int readin(int n, COMPLEX * in, double *davg, int numwins) {
     char buf[MAXBUF];
     int retval;
     int offset;
+    int complex=0;
 
     offset=0;
 
@@ -523,6 +534,7 @@ int readin(int n, COMPLEX * in, double *davg, int numwins) {
 	} else if (retval==3) {
 	    in[i+offset].re = re;
 	    in[i+offset].im = im;
+	    complex=1;
 	} else {
 	    fprintf(stderr, "line %d: bad fmt\n", line);
 	    done++;

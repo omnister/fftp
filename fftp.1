@@ -1,4 +1,4 @@
-.TH NRM 1:LOCAL "(version 0.1)" 
+.TH FFTP 1:LOCAL "(version 0.1)" 
 .ad b
 .SH NAME
 fftp  \- perform czt fast fourier transform on input data with welch's method
@@ -124,6 +124,10 @@ with the
 .I "\-k<sidelobe_level_db>"
 option.
 .SH EXAMPLES
+In the examples below, the program pd(1) refers to the pdplot(1) plotting program
+which takes ASCII x,y floating point numbers, one pair per line, and plots them in
+an X11 window with autoscaled axes.  Any other ascii plot package, such as
+gnuplot(1), could be substituted with minor changes to the script.
 .PP
 A sinusoid signal at 125Hz with a dc component of 1V can be
 generated and analyzed as follows.
@@ -233,9 +237,13 @@ D. Richard Brown III,
 .I "Digital Signal Processing - Kaiser Window Design for Fourier Analysis", 
 http://spinlab.wpi.edu/courses/ece503_2014/12-5kaiser_window_design.pdf
 (this is the code used to generate the kaiser window with a given sidelobe depth).
-.SH AUTHOR
-Rick Walker (walker@omnisterra.com).  Fftp is a clean-room
-re-implementation of the welch(1) program originally written by Scott
-Willingham at Hewlett-Packard Laboratories with the intent to duplicate
-the welch(1) command line options. 
+.TP
+[6] 
+Rick Walker, "Pdplot - an autoscaling x11 plot package", https://github.com/~omnister
 
+.SH AUTHOR
+Rick Walker (walker@omnisterra.com).  Fftp(1) attempts to duplicate the
+command line options of the welch(1) program manpage originally written by Scott
+Willingham at Hewlett-Packard Laboratories.  The core algorithms for fftp were taken
+from public domain sources [3,4,5] and the remainder was written without reference to 
+the original welch(1) source code. 
