@@ -1,0 +1,12 @@
+This is fftp(1)
+
+Fftp(1) is a program for FFTP processing ASCII waveforms.  Fftp(1)
+will perform Welch's smoothing method on large data files and optionally
+use the Chirp Z Transform to efficiently zoom into portions of the
+frequency spectrum.
+
+Fftp(1) outputs the resulting spectrum-analyzer data as an ASCII file
+ready for plotting in pdplot, gnuplot, or other graphing package.
+
+FFtp(1) is self-contained, using only stdio.h, stdlib.h and math.h.  Just
+type "make" and then "make install".
