@@ -81,8 +81,6 @@ void massage_opts() {
        exit(1);
     }
 
-    wintype_rbw_test(opts.wtype);
-
     if (wintypetoname(opts.wtype,  &name) != 0) {
        fprintf(stderr, "couldn't get window name\n");
        exit(1);
