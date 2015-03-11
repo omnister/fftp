@@ -1,5 +1,5 @@
 
-typedef enum {BLACKMAN, HANNING, HAMMING, RECTANGULAR, TRIANGULAR, NUTTALL, BNUT, KAISER, NONE} WINTYPE;
+typedef enum {BLACKMAN, HANNING, HAMMING, RECTANGULAR, TRIANGULAR, NUTTALL, BNUT, KAISER, FLAT, NONE} WINTYPE;
 
 extern int wintype(char *wname);				// return WINTYPE from a string
 extern int win_set_sidelobe(double sidelobe);			// set kaiser sidelobe level

@@ -80,6 +80,9 @@ void massage_opts() {
        fprintf(stderr, "couldn't get window bandwidth\n");
        exit(1);
     }
+
+    wintype_rbw_test(opts.wtype);
+
     if (wintypetoname(opts.wtype,  &name) != 0) {
        fprintf(stderr, "couldn't get window name\n");
        exit(1);

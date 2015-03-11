@@ -14,29 +14,39 @@ typedef struct winlist {
    double b;
    double c;
    double d;
+   double e;
 } WINLIST;
 
 WINLIST windows[] = {
-   // name          WINTYPE      n, rbw   a        b        c         d
-   { "blackman",    BLACKMAN,    1, 1.73, 0.42659, 0.49656, 0.076849, 0.0000},
-   { "nuttall",     NUTTALL,     1, 1.37, 0.35577, 0.48739, 0.144232, 0.0126},  // gain?
-   { "bnut",        BNUT,        2, 1.37, 0.36358, 0.48918, 0.136599, 0.0106},  // gain?
-   { "kaiser",      KAISER,      1, 1.00, 0.0,     0.0,     0.0,      0.0000}, 	// RBW?
-   { "vonhanning",  HANNING,     1, 1.50, 0.5,     0.50,    0.00,     0.0000},
-   { "hanning",     HANNING,     3, 1.50, 0.5,     0.50,    0.00,     0.0000},
-   { "hamming",     HAMMING,     3, 1.37, 0.54,    0.46,    0.00,     0.0000},
-   { "rectangular", RECTANGULAR, 1, 1.00, 1.00,    0.00,    0.00,     0.0000},
-   { "none", 	    NONE,        1, 0.0,  0.0,     0.0,     0.00,     0.0000}
+   // name          WINTYPE      n, rbw    a        b        c         d       e
+   { "blackman",    BLACKMAN,    1, 1.73,  0.42659, 0.49656, 0.076849, 0.0000, 0.0},
+   { "nuttall",     NUTTALL,     1, 2.023, 0.35577, 0.48739, 0.144232, 0.0126, 0.0},
+   { "bnut",        BNUT,        2, 1.978, 0.36358, 0.48918, 0.136599, 0.0106, 0.0}, 
+   { "flat",        FLAT,        1, 3.83,  1.0,     1.93,    1.29,     0.388,  0.032}, 
+   { "kaiser",      KAISER,      1, 2.285, 0.0,     0.0,     0.0,      0.0000, 0.0},
+   { "vonhanning",  HANNING,     1, 1.50,  0.5,     0.50,    0.00,     0.0000, 0.0},
+   { "hanning",     HANNING,     3, 1.50,  0.5,     0.50,    0.00,     0.0000, 0.0},
+   { "hamming",     HAMMING,     3, 1.37,  0.54,    0.46,    0.00,     0.0000, 0.0},
+   { "rectangular", RECTANGULAR, 1, 1.00,  1.00,    0.00,    0.00,     0.0000, 0.0},
+   { "none", 	    NONE,        1, 0.0,   0.0,     0.0,     0.00,     0.0000, 0.0}
 };
 
 // forward references
 double I0(double b);		// bessel function order 0
 double bfromsl(double sl);	// compute b parameter from sidelobe level
 double kaiser_window(int N, int L);
+double kaiser_rbw(double sidelobe, int L);
 
 // cached private variables
 static double b = 0.0;	
 static double sidelobe = 80.0;
+
+// http://spinlab.wpi.edu/courses/ece503_2014/12-5kaiser_window_design.pdf 
+//
+//  L ~= (24.0*M_PI*(sidelobe + 12.0))/(155.0*rbw)
+//  rbw is 1/2 main lobe width in radians
+//     so:
+//  rbw ~= (24.0*M_PI*(sidelobe + 12.0))/(155.0*L)
 
 // set and remember sidelobe level for windows that
 // require it (currently only kaiser);
@@ -49,8 +59,59 @@ int win_set_sidelobe(double sl) {
     b = bfromsl(sl); // cache b value 
 };
 
-// set rbw based on wintype, return -1 on error, 0 on success
 
+// compute RBW 
+int wintype_rbw_test(WINTYPE type) {
+    int i;
+    double rbw_table;
+    double a,b,c,d,e;
+    double n;
+    double N=1024;
+    int found;
+    double scale;
+    double theta;
+
+
+    // get window parameters from table
+    found = 0;
+    for (i=0; (windows[i].wintype != NONE) && !found ; i++) {
+       if (windows[i].wintype == type) {
+	  a = windows[i].a;
+	  b = windows[i].b;
+	  c = windows[i].c;
+	  d = windows[i].d;
+	  e = windows[i].e;
+	  rbw_table = windows[i].rbw;
+	  found++;
+       } 
+    } 
+    if (!found) {
+	return(-1);
+    }
+
+    double area=0.0;
+    double height=0.0;
+
+    for (n = 0; n < N; n++) {
+
+	if (type == KAISER) {
+	    scale = kaiser_window(n,N);
+	} else {
+	    theta = (double)n*2.0*M_PI/(N-1.0);
+	    scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta)+e*cos(4.0*theta));
+	}
+	
+	area += scale*scale;
+	height += scale;
+    }
+
+    fprintf(stderr, "window rbw:%g computed:%g\n", rbw_table, N*area/(height*height));
+
+
+    return(0);
+}
+
+// set rbw based on wintype, return -1 on error, 0 on success
 int wintype_rbw(WINTYPE wintype, double *rbw) {
     int i;
     for (i=0; windows[i].wintype != NONE; i++) {
@@ -98,7 +159,7 @@ int wintype(char *wname) {
 
 int window(COMPLEX *in, int N, WINTYPE type, int nulldc, int singlesided) {
     int n;
-    double a, b, c, d;
+    double a, b, c, d, e;
     double gain;
     double scale;
     double theta;
@@ -118,6 +179,7 @@ int window(COMPLEX *in, int N, WINTYPE type, int nulldc, int singlesided) {
 	  b = windows[i].b;
 	  c = windows[i].c;
 	  d = windows[i].d;
+	  e = windows[i].e;
 	  found++;
        } 
     } 
@@ -134,7 +196,7 @@ int window(COMPLEX *in, int N, WINTYPE type, int nulldc, int singlesided) {
 	    scale = kaiser_window(n,N);
 	} else {
 	    theta = (double)n*2.0*M_PI/(N-1.0);
-	    scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta));
+	    scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta)+e*cos(4.0*theta));
 	}
 
 	in[n].re = in[n].re*scale;	// window the data
@@ -165,7 +227,7 @@ int window(COMPLEX *in, int N, WINTYPE type, int nulldc, int singlesided) {
 		scale = kaiser_window(n,N);
 	    } else {
 		theta = (double)n*2.0*M_PI/(N-1.0);
-		scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta));
+		scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta)+e*cos(4.0*theta));
 	    }
 
 	    // null out DC term completely
@@ -183,7 +245,7 @@ int window(COMPLEX *in, int N, WINTYPE type, int nulldc, int singlesided) {
 		    scale = kaiser_window(n,N);
 		} else {
 		    theta = (double)n*2.0*M_PI/(N-1.0);
-		    scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta));
+		    scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta)+e*cos(4.0*theta));
 		}
                  
 		// makes dc term factor sqrt(2) lower
