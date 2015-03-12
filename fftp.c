@@ -188,6 +188,7 @@ int main(int argc, char **argv)
     COMPLEX *out;
     COMPLEX *inbuf;
     COMPLEX *cztemp;
+    double *win;
     double time, val;
     int nc;
     double fcorrection;
@@ -310,6 +311,24 @@ int main(int argc, char **argv)
     // Set up an array to hold the data, and assign the data.
     in = new_complex(opts.in);		// buffer for fft1d
     inbuf = new_complex(opts.in);	// scratch for readin();
+    
+    // preparing to change windowing technique
+    // first create an array to hold window coefficients:
+    win = new_double(opts.n);		// buffer for holding window
+    //
+    // then fill array with coefficients 
+    //
+    window_get(win,opts.n,opts.wtype);
+
+    for (i=0; i<opts.n; i++) {
+       printf("# %g %g\n", (double)i, win[i]);
+    }
+    // 
+    // then get data as many times as we want in array in[]
+    // window_do(in,win,opts.nodc,opts.singlesided);
+    // (multiplies in[] by coefficients in win[])
+    //
+
 
     if (opts.czt) {	// prepare czt auxiliary array
     	cztemp = new_complex(opts.out);
@@ -337,7 +356,13 @@ int main(int argc, char **argv)
         opts.samplerate = 1.0/davg;
 	// fprintf(stderr,"samplerate is %g, davg=%g\n", opts.samplerate, davg);
 
-	window(in,opts.n,opts.wtype,opts.nodc,opts.singlesided);
+	// old way:
+	// creates window, corrects gain, every block...
+	// window(in,opts.n,opts.wtype,opts.nodc,opts.singlesided);
+
+	// new way:
+	// creates window once in win[] and just reuses it...
+        window_do(in,win,opts.n,opts.nodc,opts.singlesided);
 
 	// dumparray(in, opts.n, "this is the windowed array");
 

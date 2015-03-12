@@ -9,7 +9,6 @@ typedef struct winlist {
    char *name;
    WINTYPE wintype;
    int n;	// number of chars name is unique in
-   double rbw;
    double a;
    double b;
    double c;
@@ -18,16 +17,16 @@ typedef struct winlist {
 } WINLIST;
 
 WINLIST windows[] = {
-   // name          WINTYPE   n, rbw    a        b        c         d       e
-   { "blackman",    BLACK,    1, 1.73,  0.42659, 0.49656, 0.076849, 0.0000, 0.0},
-   { "bnut",        BNUT,     2, 1.978, 0.36358, 0.48918, 0.136599, 0.0106, 0.0}, 
-   { "nuttall",     NUTT,     1, 2.023, 0.35577, 0.48739, 0.144232, 0.0126, 0.0},
-   { "flat",        FLAT,     1, 3.83,  1.0,     1.93,    1.29,     0.388,  0.032}, 
-   { "hamming",     HAMM,     3, 1.37,  0.54,    0.46,    0.00,     0.0000, 0.0},
-   { "hanning",     HANN,     3, 1.50,  0.5,     0.50,    0.00,     0.0000, 0.0},
-   { "kaiser",      KAISER,   1, 2.285, 0.0,     0.0,     0.0,      0.0000, 0.0},
-   { "rectangular", RECT,     1, 1.00,  1.00,    0.00,    0.00,     0.0000, 0.0},
-   { "none", 	    NONE,     1, 0.0,   0.0,     0.0,     0.00,     0.0000, 0.0}
+   // name          WINTYPE   n, a        b        c         d       e
+   { "blackman",    BLACK,    1, 0.42659, 0.49656, 0.076849, 0.0000, 0.0},
+   { "bnut",        BNUT,     2, 0.36358, 0.48918, 0.136599, 0.0106, 0.0}, 
+   { "nuttall",     NUTT,     1, 0.35577, 0.48739, 0.144232, 0.0126, 0.0},
+   { "flat",        FLAT,     1, 1.0,     1.93,    1.29,     0.388,  0.032}, 
+   { "hamming",     HAMM,     3, 0.54,    0.46,    0.00,     0.0000, 0.0},
+   { "hanning",     HANN,     3, 0.5,     0.50,    0.00,     0.0000, 0.0},
+   { "kaiser",      KAISER,   1, 0.0,     0.0,     0.0,      0.0000, 0.0},
+   { "rectangular", RECT,     1, 1.00,    0.00,    0.00,     0.0000, 0.0},
+   { "none", 	    NONE,     1, 0.0,     0.0,     0.00,     0.0000, 0.0}
 };
 
 // forward references
@@ -73,7 +72,6 @@ int wintype_rbw(WINTYPE type, double *rbw) {
 	  c = windows[i].c;
 	  d = windows[i].d;
 	  e = windows[i].e;
-	  rbw_table = windows[i].rbw;
 	  found++;
        } 
     } 
@@ -99,20 +97,9 @@ int wintype_rbw(WINTYPE type, double *rbw) {
 
     *rbw = N*area/(height*height);
 
-    // fprintf(stderr, "window rbw:%g computed:%g\n", rbw_table, N*area/(height*height));
+    // fprintf(stderr, "window rbw:%g computed:%g\n", N*area/(height*height));
 
     return(0);
-}
-
-int wintype_rbw_old(WINTYPE wintype, double *rbw) {
-    int i;
-    for (i=0; windows[i].wintype != NONE; i++) {
-       if (windows[i].wintype == wintype) {
-	  *rbw = windows[i].rbw;
-	  return(0);
-       } 
-    } 
-    return(-1);
 }
 
 // set name based on wintype, return -1 on error, 0 on success
@@ -147,6 +134,103 @@ int wintype(char *wname) {
     }
     // printf("%s %d\n", wname, type);
     return(type);
+}
+
+// compute window coefficients, normalize gain to unity and put them in win[]
+// for future use...
+int window_get(double *win, int N, WINTYPE type) {
+    int n;
+    double a, b, c, d, e;
+    double gain;
+    double scale;
+    double theta;
+    double area;
+    double avg;
+
+    int i;
+    int found=0;
+     
+    // fprintf(stderr, "#opts.singlesided=%d null=%d\n", singlesided, nulldc);
+
+    // get window parameters from table
+    for (i=0; (windows[i].wintype != NONE) && !found ; i++) {
+       if (windows[i].wintype == type) {
+	  a = windows[i].a;
+	  b = windows[i].b;
+	  c = windows[i].c;
+	  d = windows[i].d;
+	  e = windows[i].e;
+	  found++;
+       } 
+    } 
+    if (!found) {
+	return(-1);
+    }
+
+    area=0.0;
+    avg=0.0;;
+    for (n = 0; n < N; n++) {
+
+	if (type == KAISER) {
+	    scale = kaiser_window(n,N);
+	} else {
+	    theta = (double)n*2.0*M_PI/(N-1.0);
+	    scale = (a-b*cos(theta)+c*cos(2.0*theta)-d*cos(3.0*theta)+e*cos(4.0*theta));
+	}
+
+	win[n] = scale;		// copy the coefficients
+        area += scale;		// compute window weighting factor
+    }
+
+    gain =  area/((double)N);
+    
+    // fprintf(stderr,"#reav=%g,imav=%g,area=%g, g=%g\n", reavg, imavg, area, gain);
+
+    for (n = 0; n < N; n++) {
+	win[n] *= (1.0/gain);	// normalize gain
+    }
+
+    return(0);
+}
+
+
+// take a complex array in[] and window it with real coefficients in win[]
+// optionally null out DC term or compensate DC for singlesided display
+int window_do(COMPLEX *in, double *win, int N, int nulldc, int singlesided) {
+    int n;
+    int i;
+    double scale;
+    double theta;
+    double area;
+    double reavg;
+    double imavg;
+     
+    reavg=0.0;
+    imavg=0.0;
+    for (n = 0; n < N; n++) {
+	in[n].re = in[n].re*win[n];	// window the data
+	in[n].im = in[n].im*win[n];
+
+        reavg += in[n].re;	// compute integrated real dc value
+        imavg += in[n].im;	// compute integrated imag dc value
+    }
+
+    if (nulldc) { 		// null out DC term completely
+        for (n = 0; n < N; n++) {
+	    in[n].re -= (win[n]*reavg/(double)N);
+	    in[n].im -= (win[n]*imavg/(double)N);
+        }
+    } else {
+	if (singlesided) { 	// subtract a windowed DC term to adjust DC level
+            for (n = 0; n < N; n++) {
+	        // makes dc term factor sqrt(2) lower
+	        in[n].re -= (1.0+1.0/sqrt(2.0))*(win[n]*reavg/((double)N));
+	        in[n].im -= (1.0+1.0/sqrt(2.0))*(win[n]*imavg/((double)N));
+	    }
+	}
+    }
+
+    return(0);
 }
 
 int window(COMPLEX *in, int N, WINTYPE type, int nulldc, int singlesided) {

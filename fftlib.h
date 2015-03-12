@@ -7,6 +7,7 @@ typedef struct cplex {
 extern COMPLEX *new_complex(int size);
 extern COMPLEX *fft_1d( COMPLEX *array, int n);
 extern COMPLEX *ifft_1d(COMPLEX *array, int n);
+extern double  *new_double(int size);
 
 extern COMPLEX *czt( 
 	COMPLEX *array, 

@@ -7,4 +7,5 @@ extern int wintype_gain(WINTYPE wintype, double *gain);		// get gain for current
 extern int wintype_rbw(WINTYPE wintype, double *rbw);		// get rbw for current window
 extern int wintypetoname(WINTYPE wintype, char **wname);	// get canononic window name
 extern int window(COMPLEX *in, int N, WINTYPE type, int nulldc, int singlesided);  	// window the *in array
-
+extern int window_get(double *win, int N, WINTYPE type);
+extern int window_do(COMPLEX *in, double *win, int N, int nulldc, int singlesided);

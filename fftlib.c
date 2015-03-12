@@ -8,6 +8,10 @@ int snap2(int n) {	// snap to nearest power of two
     return (int)pow(2.0,(1.0+(int)(log((double)n-1.0)/log(2))));
 }
 
+double *new_double(int size) {
+   return((double *)malloc(sizeof(double)*size));
+}
+
 COMPLEX *new_complex(int size) {
    return((COMPLEX *)malloc(sizeof(COMPLEX)*size));
 }
