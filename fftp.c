@@ -86,23 +86,39 @@ void massage_opts() {
        exit(1);
     }
 
-    // chicken and egg problem
-    // How do we know sample rate until we read in
-    // the data?
+    // chicken and egg problem:
+    // if the user specifies the resolution bw with -b option
+    // then we need the sample rate to compute N
+    // How do we know sample rate until we read in the data?
     // How can we read in until we know N?
-    // Solution: create preread() routine that reads
-    // some small number (say 10) lines into a buffer
-    // and returns success or failure plus the sample
-    // rate.  This allows computation of N.  When
-    // readin(N,buf) gets called later, the existence
-    // of the preread block is checked and these data
+    // Solution: create a wrapper around fgets();
+    // Then we can set our wrapper to save lines
+    // in a queue when in pushback mode.  We can then 
+    // read a small number (say 4) lines into a buffer
+    // and returns the sample rate.  
+    // This allows computation of N.  When
+    // readin(N,buf) gets called later, for normal processing
+    // we turnoff pushback mode. The existence
+    // of the saved lines is checked and these data
     // points are read in as a special case and preread
     // data is cleared.
 
+    // if opts.rbw !=0.0 then compute opts.n
     if (opts.rbw != 0.0) {
-        // FIXME: can't do this until read first block
-    	// to find samplerate
-        opts.n = (opts.wbw*opts.samplerate)/opts.rbw;
+
+	COMPLEX readbuf[16];
+	double sampletime;
+	int ccflag=0;
+
+	xfgets_pushback(1);	// turn on pushback
+	readin(4,readbuf,&sampletime,0,&ccflag);
+	xfgets_pushback(0); // turn off pushback
+	// xfgets_dump();
+
+	// fprintf(stderr, "sampletime is %g\n", sampletime);
+	opts.samplerate = 1.0/sampletime;
+
+        opts.n = (int)(opts.wbw*opts.samplerate)/opts.rbw;
     }
 
     if (opts.m != 0 && opts.n == 0) {
@@ -200,6 +216,7 @@ int main(int argc, char **argv)
     double x;
     double gain;
     double m;
+    int complex=0;	// set positive if readin() sees complex (three column) input
 
     init_opts();
 
@@ -320,9 +337,10 @@ int main(int argc, char **argv)
     //
     window_get(win,opts.n,opts.wtype);
 
-    for (i=0; i<opts.n; i++) {
-       printf("# %g %g\n", (double)i, win[i]);
-    }
+    //for (i=0; i<opts.n; i++) {
+    //   printf("# %g %g\n", (double)i, win[i]);
+    //}
+
     // 
     // then get data as many times as we want in array in[]
     // window_do(in,win,opts.nodc,opts.singlesided);
@@ -341,7 +359,7 @@ int main(int argc, char **argv)
     // default 1024. should reset opts.n and try again.
 
     numwins=0;
-    while ((done=readin(opts.n,inbuf,&davg,numwins)) == 0) {
+    while ((done=readin(opts.n,inbuf,&davg,numwins,&complex)) == 0) {
 
 	// don't overwrite original data for overlapping
 	// windows:
@@ -458,7 +476,7 @@ int main(int argc, char **argv)
         //	opts.samplerate, opts.wbw*fcorrection,opts.n,numwins);
     }
 
-    if (!opts.czt && opts.singlesided) {
+    if (!opts.czt && opts.singlesided && !complex) {
 	double posmag, negmag, corr;
 	for (i = 0; i < ((opts.m/2)+1); i++) {
 
@@ -505,18 +523,96 @@ int main(int argc, char **argv)
     return(0);
 }
 
+//------------------------------------------------------------
+// xfgets() is a replacement for fgets() with pushback.
+// if xfgets_pushback(mode) is called with mode=1, then 
+// lines are read from fp and saved in a linked list queue.
+// if xfgets_pushback(0), the lines are read from the
+// queue (in original order) until the queue is empty, and 
+// then lines are read from fp again.
+
+typedef struct strlist {
+    char *s;
+    struct strlist *next;
+    struct strlist *prev;
+} STRLIST;
+
+static int pushback = 0;
+static STRLIST *head = NULL;
+static STRLIST *tail = NULL;
+
+xfgets_pushback(int mode) {
+   pushback=mode;
+}
+
+xfgets_dump() {
+   STRLIST *p;
+   for (p=head; p!=NULL; p=p->next) {
+      fprintf(stderr,"%s\n", p->s);
+   }
+}
+
+xfgets_save(char *s) {
+   char *savebuf;
+   STRLIST *strlist;
+   STRLIST *tmp;
+
+   // copy the string
+   savebuf = malloc(strlen(s)+1);
+   strcpy(savebuf, s);
+
+   // create a STRLIST object
+   strlist = malloc(sizeof(STRLIST));
+   strlist -> next =  NULL;
+   strlist -> prev =  NULL;
+   strlist -> s = savebuf;
+
+   if (head == NULL) {
+      head = strlist;
+      tail = strlist;
+   } else {
+      tail->next = strlist;
+      strlist->prev = tail;
+      tail = strlist;
+   }
+}
+
+char *xfgets(char *buf, int size, FILE *fp) {
+   char *s;
+   STRLIST *tmp;
+
+   if (pushback) {
+       s=fgets(buf, MAXBUF, stdin);
+       xfgets_save(s);
+   } else {
+       if (head != NULL) {
+	   strcpy(buf,head->s);
+           s = buf;
+	   tmp = head;
+	   head = head->next;
+	   free(tmp);
+       } else {
+	   s=fgets(buf, MAXBUF, stdin);
+       }
+       return(s);
+   }
+
+   return(s);
+}
+
+//------------------------------------------------------------
+
 // read in <n> doubles to array <in> return nonzero on error if eof
 // computes running average of sample rate and returns
 // average sample interval in <*davg>.  Gives error on
 // stderr if any time spacing varies from the running average
-// by more than TIMETOL
+// by more than TIMETOL.
+// *complex is a pointer to a flag that reports it readin 
+// ever seen a complex number on the input
 
 #define TIMETOL 1e-1
 
-// FIXME: readin should get passed a pointer to a flag that
-// says whether it has ever seen a complex number on the input
-
-int readin(int n, COMPLEX * in, double *davg, int numwins) {
+int readin(int n, COMPLEX * in, double *davg, int numwins, int *complex) {
     int i;
     double t, told, delta,  re, im;
     int error=0;
@@ -525,7 +621,6 @@ int readin(int n, COMPLEX * in, double *davg, int numwins) {
     char buf[MAXBUF];
     int retval;
     int offset;
-    int complex=0;
 
     offset=0;
 
@@ -548,7 +643,7 @@ int readin(int n, COMPLEX * in, double *davg, int numwins) {
 	// so that we accept 2 and three doubles per line
 	// for complex data without slipping sync
 
-	if (fgets(buf, MAXBUF, stdin) == NULL) {
+	if (xfgets(buf, MAXBUF, stdin) == NULL) {
 	    done++;
 	    break;
 	}
@@ -562,7 +657,7 @@ int readin(int n, COMPLEX * in, double *davg, int numwins) {
 	} else if (retval==3) {
 	    in[i+offset].re = re;
 	    in[i+offset].im = im;
-	    complex=1;
+	    *complex=1;
 	} else {
 	    fprintf(stderr, "line %d: bad fmt\n", line);
 	    done++;

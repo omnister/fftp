@@ -1,18 +1,22 @@
 .TH FFTP 1:LOCAL "(version 0.1)" 
 .ad b
 .SH NAME
-fftp  \- perform czt fast fourier transform on input data with welch's method
+fftp  \- perform czt Fast Fourier Transform (FFT) on input data with welch's method
 .SH SYNOPSIS
 .B fftp
-[\-0] [-1] [\-a] [\-b<rbw>]
-[\-d<ref>] [\-f<fmin>,<fmax>] [\-f<fcenter>@<span>] [\-h] 
+[\-0] (suppress DC component)
+[-1] (force single-sided spectrum)
+[\-a] (animate: plot each average as generated)
+[\-b<rbw>]
+[\-d<dbref>] [\-f<fmin>,<fmax>] [\-f<fcenter>@<span>] [\-h] 
 [\-k<sidelobe_level>] [\-m<CZT_blocksize>]
 [\-n<input_blocksize>]
 [\-p<fft_pad_factor>]
-[\-s]
-[\-t]
-[\-v]
+[\-s] (enable spectral density mode)
+[\-t] (enable pdplot headers)
+[\-v] (verbose mode)
 [\-w<window_type>]
+[\-?] (print usage)
 [filenames]
 .br 
 .PP
@@ -27,14 +31,15 @@ Z Transform (CZT) [2] to allow efficient zooming into a desired frequency range.
 .TP
 .I "\-0"
 Supresses DC component on each block.  This is implemented by measuring the DC
-value of the signal after windowing and then subtracting a windowed DC value from
-the data.  This supresses the sidelobes of the DC component which might otherwise
-obscure low frequency spectral components.
+value of both the real and imaginary parts of the signal after windowing and then 
+subtracting a windowed DC value from the data.  This supresses the sidelobes of
+the DC component which might otherwise obscure low frequency spectral components.
 .TP
 .I "\-1"
 Display the spectrum in one-sided form.  This is usually the desired format for
 real input data.  The complex double sided spectrum is always calculated, but the 
-displayed one-sided power is the sum of the positive and negative powers.
+displayed one-sided power is the sum of the positive and negative powers. Ignored in
+CZT mode if the start frequency is negative, or if the input data is complex.
 .TP
 .I "\-a"
 Animate mode.  Outputs each average as it is computed rather than waiting for
@@ -42,7 +47,16 @@ the entire ensemble to be processed.  If the output is piped to pdplot(1), the u
 can watch the noise averaging as it progresses.
 .TP
 .I "\-b <rbw>"
-Set the desired resolution bandwidth.  This option is only partially implemented
+Set the desired resolution bandwidth in units of Hz.  Fftp will pre-read (and save)
+several lines from the input file to determine the sampling rate.  From the sampling
+rate and effective noise bandwidth of the window, Fftp will set the input blocksize 
+to achieve the desired resolution.  After setting the blocksize, Fftp will 
+then reread the saved data and proceed normally.
+Any blocksize specified with the
+.I "\-n"
+option will be overridden. Resolution Bandwidth herein is defined as the Effective Noise
+Bandwith of the window.  For most windows it is approximately 1/2 the width of the main
+lobe at 3dB bandwidth.
 .TP
 .I "\-d<ref>"
 Adjust the 0dB reference level.  By default, the signal is plotted as RMS amplitude

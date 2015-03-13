@@ -16,12 +16,15 @@ typedef struct winlist {
    double e;
 } WINLIST;
 
+// gaussian window
+// W(n) = exp((-1/2)*pow(((n-(N-1)/2)/(sigma*(N-1)/2)), 2.0);
+
 WINLIST windows[] = {
    // name          WINTYPE   n, a        b        c         d       e
    { "blackman",    BLACK,    1, 0.42659, 0.49656, 0.076849, 0.0000, 0.0},
    { "bnut",        BNUT,     2, 0.36358, 0.48918, 0.136599, 0.0106, 0.0}, 
    { "nuttall",     NUTT,     1, 0.35577, 0.48739, 0.144232, 0.0126, 0.0},
-   { "flat",        FLAT,     1, 1.0,     1.93,    1.29,     0.388,  0.032}, 
+   { "flat",        FLAT,     1, 1.0,     1.93262, 1.28613,  0.3877, 0.0322}, 
    { "hamming",     HAMM,     3, 0.54,    0.46,    0.00,     0.0000, 0.0},
    { "hanning",     HANN,     3, 0.5,     0.50,    0.00,     0.0000, 0.0},
    { "kaiser",      KAISER,   1, 0.0,     0.0,     0.0,      0.0000, 0.0},
