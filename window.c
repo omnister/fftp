@@ -125,6 +125,8 @@ int wintype(char *wname) {
     char *name;
 
     WINTYPE type=BLACK;
+    wintypetoname(type, &name);
+
     for (i=0; windows[i].wintype != NONE; i++) {
        if (strncasecmp(wname, windows[i].name, windows[i].n)==0) {
 	  found++;

@@ -359,7 +359,23 @@ int main(int argc, char **argv)
     // default 1024. should reset opts.n and try again.
 
     numwins=0;
-    while ((done=readin(opts.n,inbuf,&davg,numwins,&complex)) == 0) {
+    int nn=opts.n;
+    printf("#entering while %d\n", nn);
+    while (1) {
+        done=readin(&nn,inbuf,&davg,numwins,&complex);
+	if (done && numwins != 0) break;
+        
+	printf("#readin returned %d\n", nn);
+
+	// if we run out of points on the first window, then adjust 
+	// opts.n and continue
+
+	if (numwins==0) {
+	   if (nn != opts.n) {
+	     fprintf(stderr,"ran out of points before reaching %d, continuing with %d\n", opts.n, nn);
+	     opts.n=nn;
+	   }
+	}
 
 	// don't overwrite original data for overlapping
 	// windows:
@@ -414,10 +430,6 @@ int main(int argc, char **argv)
 		    // FIXME: perhaps check for out of bounds frequencies here
 		default:
 		    break;
-	    }
-            if(opts.verbose) {
-	       fprintf(stderr, "# opts.fstart=%g, opts.fstop=%g\n", 
-	           opts.fstart, opts.fstop);
 	    }
 	    // fcorrection = opts.samplerate/m;
 	    fcorrection = opts.p*(opts.fstop-opts.fstart)/m;
@@ -612,7 +624,7 @@ char *xfgets(char *buf, int size, FILE *fp) {
 
 #define TIMETOL 1e-1
 
-int readin(int n, COMPLEX * in, double *davg, int numwins, int *complex) {
+int readin(int *nn, COMPLEX * in, double *davg, int numwins, int *complex) {
     int i;
     double t, told, delta,  re, im;
     int error=0;
@@ -621,9 +633,10 @@ int readin(int n, COMPLEX * in, double *davg, int numwins, int *complex) {
     char buf[MAXBUF];
     int retval;
     int offset;
+    int n=*nn;
 
     offset=0;
-
+    printf("foo: in readin\n");
     if (numwins != 0) {	// not on first one, so shift and overlap
         for (i = 0; i <= n/2; i++) {
 	   in[i].re=in[i+n/2].re;
@@ -636,7 +649,6 @@ int readin(int n, COMPLEX * in, double *davg, int numwins, int *complex) {
 
 
     for (i = 0; i < n-offset; i++) {
-    // for (i = 0; i < n; i++) {
 	told=t;
 
 	// read complete lines and parses them
@@ -684,6 +696,8 @@ int readin(int n, COMPLEX * in, double *davg, int numwins, int *complex) {
 	    error=0;
         }
     }
+    printf("foo: exiting readin with %d\n",i);
+    if (numwins==0) *nn = i;
     return(done);
 }
 
