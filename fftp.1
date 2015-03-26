@@ -104,7 +104,9 @@ Enable CZT processing with the specified number of output points.
 .TP
 .I "\-n<input_blocksize>"
 Use blocks of <input_blocksize> for the Welch averaging algorithm.  The
-default blocksize is 1024. 
+default blocksize is 1024.  If the data stream has less points than 
+desired , Fftp will reset the blocksize, print a message to stderr to inform the
+user, and continue with a shorter analysis.
 .TP
 .I "\-p<fft_pad_factor>"
 Specify a zero padding factor for input data.  It can be difficult to
