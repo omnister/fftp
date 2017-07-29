@@ -360,12 +360,12 @@ int main(int argc, char **argv)
 
     numwins=0;
     int nn=opts.n;
-    printf("#entering while %d\n", nn);
+    // printf("#entering while %d\n", nn);
     while (1) {
         done=readin(&nn,inbuf,&davg,numwins,&complex);
 	if (done && numwins != 0) break;
         
-	printf("#readin returned %d\n", nn);
+	// printf("#readin returned %d\n", nn);
 
 	// if we run out of points on the first window, then adjust 
 	// opts.n and continue
@@ -636,7 +636,7 @@ int readin(int *nn, COMPLEX * in, double *davg, int numwins, int *complex) {
     int n=*nn;
 
     offset=0;
-    printf("foo: in readin\n");
+    // printf("foo: in readin\n");
     if (numwins != 0) {	// not on first one, so shift and overlap
         for (i = 0; i <= n/2; i++) {
 	   in[i].re=in[i+n/2].re;
@@ -696,7 +696,7 @@ int readin(int *nn, COMPLEX * in, double *davg, int numwins, int *complex) {
 	    error=0;
         }
     }
-    printf("foo: exiting readin with %d\n",i);
+    // printf("foo: exiting readin with %d\n",i);
     if (numwins==0) *nn = i;
     return(done);
 }
