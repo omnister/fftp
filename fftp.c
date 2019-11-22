@@ -16,6 +16,10 @@
 double dbparse(char *dbrefstring);
 int parse_fspec(char *line, double *fstart, double *fstop);
 void dumparray(COMPLEX *in, int npts, char *str);
+int xfgets_pushback(int mode);
+int xfgets_dump();
+int xfgets_save(char *s);
+int readin(int *nn, COMPLEX * in, double *davg, int numwins, int *complex);
 
 typedef struct options {
     int n;
@@ -109,9 +113,10 @@ void massage_opts() {
 	COMPLEX readbuf[16];
 	double sampletime;
 	int ccflag=0;
+	int n=4;
 
 	xfgets_pushback(1);	// turn on pushback
-	readin(4,readbuf,&sampletime,0,&ccflag);
+	readin(&n,readbuf,&sampletime,0,&ccflag);
 	xfgets_pushback(0); // turn off pushback
 	// xfgets_dump();
 
@@ -553,18 +558,18 @@ static int pushback = 0;
 static STRLIST *head = NULL;
 static STRLIST *tail = NULL;
 
-xfgets_pushback(int mode) {
+int xfgets_pushback(int mode) {
    pushback=mode;
 }
 
-xfgets_dump() {
+int xfgets_dump() {
    STRLIST *p;
    for (p=head; p!=NULL; p=p->next) {
       fprintf(stderr,"%s\n", p->s);
    }
 }
 
-xfgets_save(char *s) {
+int xfgets_save(char *s) {
    char *savebuf;
    STRLIST *strlist;
    STRLIST *tmp;
