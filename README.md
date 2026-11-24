@@ -46,7 +46,8 @@ type "make" and then "make install".
            for (t=0; t<5; t+=1/1024) {
               print t, cos(6.2832*125*t), sin(6.2832*125*t)
            }
-       }' | fftp -whan -n350 -p8 | pd
+         }
+      ' | fftp -whan -n350 -p8 | pd
 
    With  the  -f option, one can zoom in on the desired signal.  Note that
    the resolution of the peak is still limited by the  window  length  se‐
@@ -59,24 +60,28 @@ type "make" and then "make install".
            for (t=0; t<5; t+=1/1024) {
               print t, cos(6.2832*125*t), sin(6.2832*125*t)
            }
-       }' | fftp -whan -n350 -p8 -f50@125 -dbv | pd 
+         }
+       ' | fftp -whan -n350 -p8 -f50@125 -dbv | pd 
 
 ![test2 graph](images/test2.png)
 
    The following example demonstrates the measurement  of  wideband  noise
-   using  the  spectral density mode enabled by the option -s.  The gener‐
-   ated binary noise sequence has a root-mean-squared value of  1  "Volt".
+   using  the  spectral density mode enabled by the option -s.  The generated
+   binary noise sequence has a root-mean-squared value of  1  "Volt".
    Assuming  that  the  noise  is distributed uniformly over the bandwidth
    from zero to the Nyquist frequency of 512Hz, the noise magnitude should
    be 1/sqrt(512) V/sqrt(Hz) or about 44 mV/sqrt(Hz).
 
-       awk '
-       BEGIN {
-	 OFMT="%.12g"
-	 for (t=0; t<250; t+=1/1024)
-	   print t, (rand()<0.5) ? -1 : 1
-       }' | fftp -1s -n500 -a100 -t | pd
+    awk '
+      BEGIN {
+        OFMT="%.12g"
+        for (t=0; t<250; t+=1/1024) {
+          print t, (rand()<0.5) ? -1 : 1
+        }
+       }
+   ' | fftp -1s -n500 -a100 -t | pd
 
+![test3 graph](images/test3.png)
 
    Use of a Kaiser data window allows one to  resolve  low-level  spectral
    features that can be obscured by the sidelobes of other windows.
