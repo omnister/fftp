@@ -36,18 +36,17 @@ type "make" and then "make install".
 
 ![test1 graph](images/test1.png)
 
-
    Complex  input  data  such  as the following, resulting from quadrature
    mixing of a single-sideband signal, yields  an  asymmetrical  two-sided
    spectrum.
 
        awk '
-       BEGIN {
-	 OFMT="%.12g"
-	 for (t=0; t<5; t+=1/1024)
-	   print t, cos(6.2832*125*t), sin(6.2832*125*t)
+         BEGIN {
+           OFMT="%.12g"
+           for (t=0; t<5; t+=1/1024) {
+              print t, cos(6.2832*125*t), sin(6.2832*125*t)
+           }
        }' | fftp -whan -n350 -p8 | pd
-
 
    With  the  -f option, one can zoom in on the desired signal.  Note that
    the resolution of the peak is still limited by the  window  length  se‐
@@ -55,12 +54,14 @@ type "make" and then "make install".
    example to enable decibel plots.
 
        awk '
-       BEGIN {
-	 OFMT="%.12g"
-	 for (t=0; t<5; t+=1/1024)
-	   print t, cos(6.2832*125*t), sin(6.2832*125*t)
-       }' | fftp -whan -n350 -f50@125 -dbv | pd
+         BEGIN {
+           OFMT="%.12g"
+           for (t=0; t<5; t+=1/1024) {
+              print t, cos(6.2832*125*t), sin(6.2832*125*t)
+           }
+       }' | fftp -whan -n350 -p8 -f50@125 -dbv | pd 
 
+![test2 graph](images/test2.png)
 
    The following example demonstrates the measurement  of  wideband  noise
    using  the  spectral density mode enabled by the option -s.  The gener‐
