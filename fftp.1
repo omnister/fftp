@@ -154,7 +154,7 @@ generated and analyzed as follows.
       OFMT="%.12g"
       for (t=0; t<5; t+=1/1024)
         print t, 1+sqrt(2)*sin(6.2832*125*t)
-    }' | fftp -1 -wv -n350 -p8 | pd
+    }' | fftp -1 -whan -n350 -p8 | pd
 .DE
 
 .PP
@@ -168,7 +168,7 @@ spectrum.
       OFMT="%.12g"
       for (t=0; t<5; t+=1/1024)
         print t, cos(6.2832*125*t), sin(6.2832*125*t)
-    }' | fftp -wv -n350 -p8 | pd
+    }' | fftp -whan -n350 -p8 | pd
 .DE
 
 .PP
@@ -187,7 +187,7 @@ option is also introduced in this example to enable decibel plots.
       OFMT="%.12g"
       for (t=0; t<5; t+=1/1024)
         print t, cos(6.2832*125*t), sin(6.2832*125*t)
-    }' | fftp -wv -n350 -f50@125 -dbv | pd
+    }' | fftp -whan -n350 -f50@125 -dbv | pd
 .DE
 
 .PP

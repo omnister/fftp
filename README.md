@@ -27,11 +27,14 @@ type "make" and then "make install".
    and analyzed as follows.
 
        awk '
-       BEGIN {
-	 OFMT="%.12g"
-	 for (t=0; t<5; t+=1/1024)
-	   print t, 1+sqrt(2)*sin(6.2832*125*t)
-       }' | fftp -1 -wv -n350 -p8 | pd
+         BEGIN {
+         OFMT="%.12g"
+         for (t=0; t<5; t+=1/1024) {
+           print t, 1+sqrt(2)*sin(6.2832*125*t)
+         }
+       }' | fftp -1 -whan -n350 -p8 | pd
+
+![test1 graph](images/test1.png)
 
 
    Complex  input  data  such  as the following, resulting from quadrature
@@ -43,7 +46,7 @@ type "make" and then "make install".
 	 OFMT="%.12g"
 	 for (t=0; t<5; t+=1/1024)
 	   print t, cos(6.2832*125*t), sin(6.2832*125*t)
-       }' | fftp -wv -n350 -p8 | pd
+       }' | fftp -whan -n350 -p8 | pd
 
 
    With  the  -f option, one can zoom in on the desired signal.  Note that
@@ -56,7 +59,7 @@ type "make" and then "make install".
 	 OFMT="%.12g"
 	 for (t=0; t<5; t+=1/1024)
 	   print t, cos(6.2832*125*t), sin(6.2832*125*t)
-       }' | fftp -wv -n350 -f50@125 -dbv | pd
+       }' | fftp -whan -n350 -f50@125 -dbv | pd
 
 
    The following example demonstrates the measurement  of  wideband  noise
