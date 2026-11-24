@@ -79,7 +79,7 @@ type "make" and then "make install".
           print t, (rand()<0.5) ? -1 : 1
         }
        }
-   ' | fftp -1s -n500 -a100 -t | pd
+   ' | fftp -1s -n500 -t | pd
 
 ![test3 graph](images/test3.png)
 
